@@ -187,6 +187,68 @@ def test_scrape_esa_download_urls_normalizes_malformed_links(monkeypatch):
     ]
 
 
+def test_scrape_esa_download_urls_retries_on_429_then_succeeds(monkeypatch):
+    import requests
+
+    class RateLimitedResponse:
+        status_code = 429
+
+        def raise_for_status(self):
+            raise requests.exceptions.HTTPError(response=self)
+
+    class OkResponse:
+        text = "<html><div class='sentinel-1a'></div></html>"
+
+        def raise_for_status(self):
+            return None
+
+    responses = iter([RateLimitedResponse(), OkResponse()])
+    monkeypatch.setattr(utils_mod.requests, "get", lambda url: next(responses))
+
+    sleeps = []
+    monkeypatch.setattr(utils_mod.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    urls = utils_mod.scrape_esa_download_urls("https://example.com", "sentinel-1a")
+
+    assert urls == []
+    assert sleeps == [2]
+
+
+def test_scrape_esa_download_urls_gives_up_after_max_attempts_on_429(monkeypatch):
+    import requests
+
+    class RateLimitedResponse:
+        status_code = 429
+
+        def raise_for_status(self):
+            raise requests.exceptions.HTTPError(response=self)
+
+    monkeypatch.setattr(utils_mod.requests, "get", lambda url: RateLimitedResponse())
+    monkeypatch.setattr(utils_mod.time, "sleep", lambda seconds: None)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        utils_mod.scrape_esa_download_urls("https://example.com", "sentinel-1a")
+
+
+def test_scrape_esa_download_urls_does_not_retry_non_429_errors(monkeypatch):
+    import requests
+
+    class ServerErrorResponse:
+        status_code = 500
+
+        def raise_for_status(self):
+            raise requests.exceptions.HTTPError(response=self)
+
+    monkeypatch.setattr(utils_mod.requests, "get", lambda url: ServerErrorResponse())
+    sleeps = []
+    monkeypatch.setattr(utils_mod.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        utils_mod.scrape_esa_download_urls("https://example.com", "sentinel-1a")
+
+    assert sleeps == []
+
+
 def test_get_spatial_extent_km_uses_projected_bounds(monkeypatch):
     class FakeArea:
         def sum(self):

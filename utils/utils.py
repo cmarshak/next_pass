@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
@@ -61,10 +62,30 @@ class Tee:
             stream.flush()
 
 
-def scrape_esa_download_urls(url: str, class_: str) -> List[str]:
-    """Scrape ESA website for KML download URLs."""
-    response = requests.get(url)
-    response.raise_for_status()
+def scrape_esa_download_urls(url: str, class_: str, max_attempts: int = 3) -> List[str]:
+    """Scrape ESA website for KML download URLs.
+
+    Retries on HTTP 429 (rate limiting) with bounded exponential backoff
+    (``2**attempt`` seconds); other request errors propagate immediately with
+    no added delay.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            break
+        except requests.exceptions.HTTPError as e:
+            is_rate_limited = e.response is not None and e.response.status_code == 429
+            if not is_rate_limited or attempt == max_attempts:
+                raise
+            LOGGER.warning(
+                "Rate limited (429) scraping %s; retrying in %ds (attempt %d/%d).",
+                url,
+                2**attempt,
+                attempt,
+                max_attempts,
+            )
+            time.sleep(2**attempt)
 
     soup = BeautifulSoup(response.text, "html.parser")
     div = soup.find("div", class_=class_)
@@ -94,7 +115,7 @@ def download_kml(url: str, out_path: str = "collection.kml") -> Path:
     response.raise_for_status()
     path = Path(out_path)
     path.write_bytes(response.content)
-    LOGGER.info(f"File downloaded successfully: {path}")
+    LOGGER.debug(f"File downloaded successfully: {path}")
     return path
 
 

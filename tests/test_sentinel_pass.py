@@ -48,7 +48,9 @@ def test_next_sentinel_pass_handles_plan_read_error(monkeypatch):
         lambda path: (_ for _ in ()).throw(OSError("missing")),
     )
     monkeypatch.setattr(
-        sentinel_pass, "create_s1_collection_plan", lambda n_day_past: "missing.geojson"
+        sentinel_pass,
+        "create_s1_collection_plan",
+        lambda n_day_past, step_cb=None: "missing.geojson",
     )
 
     result = sentinel_pass.next_sentinel_pass(
@@ -62,7 +64,7 @@ def test_next_sentinel_pass_returns_grouped_results_without_cloudiness(monkeypat
     monkeypatch.setattr(
         sentinel_pass,
         "create_s1_collection_plan",
-        lambda n_day_past: "collection.geojson",
+        lambda n_day_past, step_cb=None: "collection.geojson",
     )
     monkeypatch.setattr(
         sentinel_pass.gpd, "read_file", lambda path: FakeFrame([{"platform": "S1A"}])
@@ -122,7 +124,7 @@ def test_next_sentinel_pass_returns_cloudiness_when_requested(monkeypatch):
     monkeypatch.setattr(
         sentinel_pass,
         "create_s2_collection_plan",
-        lambda n_day_past: "collection.geojson",
+        lambda n_day_past, step_cb=None: "collection.geojson",
     )
     monkeypatch.setattr(sentinel_pass.gpd, "read_file", lambda path: FakeFrame([{}]))
     monkeypatch.setattr(
@@ -161,7 +163,7 @@ def test_next_sentinel_pass_returns_no_collect_message(monkeypatch):
     monkeypatch.setattr(
         sentinel_pass,
         "create_s1_collection_plan",
-        lambda n_day_past: "collection.geojson",
+        lambda n_day_past, step_cb=None: "collection.geojson",
     )
     monkeypatch.setattr(
         sentinel_pass.gpd,
@@ -190,7 +192,7 @@ def test_next_sentinel_pass_returns_tide_for_point_aoi(monkeypatch):
     monkeypatch.setattr(
         sentinel_pass,
         "create_s1_collection_plan",
-        lambda n_day_past: "collection.geojson",
+        lambda n_day_past, step_cb=None: "collection.geojson",
     )
     monkeypatch.setattr(
         sentinel_pass.gpd, "read_file", lambda path: FakeFrame([{"platform": "S1A"}])

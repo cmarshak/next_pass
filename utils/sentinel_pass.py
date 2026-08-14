@@ -110,7 +110,7 @@ def _scrape_esa_plans(base_url: str, specs: list[tuple[str, str]]) -> tuple[list
     return urls, platforms
 
 
-def create_s1_collection_plan(n_day_past: float) -> Path:
+def create_s1_collection_plan(n_day_past: float, step_cb=None) -> Path:
     """Prepare Sentinel-1 acquisition plan collection."""
     urls, platforms = _scrape_esa_plans(
         SENT1_URL,
@@ -124,10 +124,11 @@ def create_s1_collection_plan(n_day_past: float) -> Path:
         "sentinel_1_collection.geojson",
         LOGGER,
         platforms,
+        step_cb=step_cb,
     )
 
 
-def create_s2_collection_plan(n_day_past: float) -> Path:
+def create_s2_collection_plan(n_day_past: float, step_cb=None) -> Path:
     """Prepare Sentinel-2 acquisition plan collection."""
     urls, platforms = _scrape_esa_plans(
         SENT2_URL,
@@ -141,6 +142,7 @@ def create_s2_collection_plan(n_day_past: float) -> Path:
         "sentinel_2_collection.geojson",
         LOGGER,
         platforms,
+        step_cb=step_cb,
     )
 
 
@@ -297,9 +299,9 @@ def next_sentinel_pass(
         if step_cb:
             step_cb("Loading collection")
         if sat == "sentinel1":
-            gdf = gpd.read_file(create_s1_collection_plan(n_day_past))
+            gdf = gpd.read_file(create_s1_collection_plan(n_day_past, step_cb=step_cb))
         elif sat == "sentinel2":
-            gdf = gpd.read_file(create_s2_collection_plan(n_day_past))
+            gdf = gpd.read_file(create_s2_collection_plan(n_day_past, step_cb=step_cb))
         else:
             LOGGER.error("Unsupported satellite identifier: %s", sat)
             return {

@@ -305,11 +305,11 @@ class FakeFrame:
         )
 
     def to_json(self):
-        return json.dumps(self.__geo_interface__)
+        return json.dumps(self.__geo_interface__, default=str)
 
     def to_file(self, path):
         with open(path, "w", encoding="utf-8") as handle:
-            json.dump(self.__geo_interface__, handle)
+            json.dump(self.__geo_interface__, handle, default=str)
 
     def __getitem__(self, key):
         if isinstance(key, str):

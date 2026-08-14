@@ -9,6 +9,7 @@ from rich.progress import (
     BarColumn,
     Progress,
     SpinnerColumn,
+    TaskID,
     TextColumn,
     TimeElapsedColumn,
 )
@@ -71,7 +72,7 @@ def overpass_progress(
 class ProgressController:
     """Owns the master task and hands out per-satellite sub-tasks."""
 
-    def __init__(self, progress: Optional[Progress], master_task):
+    def __init__(self, progress: Optional[Progress], master_task: Optional[TaskID]):
         self._progress = progress
         self._master = master_task
 

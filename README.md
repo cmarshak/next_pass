@@ -38,7 +38,15 @@ next_pass/
 
 ## Installation
 
-Clone the repository:
+The recommended way to install `next-pass` is from PyPI using `pip`:
+
+```bash
+pip install next-pass
+```
+
+### Development Installation
+
+If you would like to contribute to the project or install it from source, clone the repository:
 
 ```bash
 git clone https://github.com/OPERA-Cal-Val/next_pass.git
@@ -51,7 +59,7 @@ Create a fresh environment **(recommended)**:
 mamba env create -f environment.yml
 mamba activate next_pass
 ```
-or with conda
+or with conda:
 
 ```bash
 conda env create -f environment.yml
@@ -64,7 +72,7 @@ Alternatively, install the runtime dependencies directly:
 conda install -c conda-forge --yes --file requirements.txt
 ```
 
-Install the package (optional but recommended)
+Install the package (optional but recommended):
 ```bash
 pip install -e .
 ```

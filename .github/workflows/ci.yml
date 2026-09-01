@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        environment: ["py312", "default"]
+        environment: ["py311", "py312", "default"]
         include:
           - os: macos-latest
             environment: default

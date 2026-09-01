@@ -1,7 +1,7 @@
 # NEXT PASS
 
 [![PyPI version](https://img.shields.io/pypi/v/next-pass?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/next-pass/)
-[![Python versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue?logo=python&logoColor=white)](https://pypi.org/project/next-pass/)
+[![Python versions](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue?logo=python&logoColor=white)](https://pypi.org/project/next-pass/)
 [![CI](https://github.com/OPERA-Cal-Val/next_pass/actions/workflows/ci.yml/badge.svg)](https://github.com/OPERA-Cal-Val/next_pass/actions/workflows/ci.yml)
 [![Overpass map](https://img.shields.io/badge/overpass%20map-live-1baf7a?logo=leaflet&logoColor=white)](https://opera-cal-val.github.io/next_pass/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)

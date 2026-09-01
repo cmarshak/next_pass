@@ -7,7 +7,7 @@ name = "next-pass"
 version = "1.4.0"
 description = "Predict the next satellite overpass (S1/S2/L8/L9/NISAR) over an AOI and query OPERA products."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 
 license = { file = "LICENSE" }
 
@@ -32,6 +32,7 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "License :: OSI Approved :: Apache Software License",
@@ -135,6 +136,9 @@ platforms = ["linux-64", "osx-arm64", "osx-64"]
 [tool.pixi.pypi-dependencies]
 next-pass = { path = ".", editable = true }
 
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+
 [tool.pixi.feature.py312.dependencies]
 python = "3.12.*"
 
@@ -152,6 +156,7 @@ format-check = "ruff format --diff"
 
 [tool.pixi.environments]
 default = { features = ["py313", "lint"], solve-group = "py313" }
+py311 = { features = ["py311"], solve-group = "py311" }
 py312 = { features = ["py312"], solve-group = "py312" }
 lint = { features = ["lint"], no-default-feature = true }
 
@@ -163,17 +168,17 @@ viewer = "next-pass-viewer"
 lab = "jupyter lab"
 
 [tool.pixi.dependencies]
-python = ">=3.12"
+python = ">=3.11"
 asf_search = ">=13.0.0,<14"
 beautifulsoup4 = ">=4.15.0,<5"
 boto3 = ">=1.43.56,<2"
-earthaccess = ">=0.18.0,<0.19"
+earthaccess = ">=0.9,<0.19"
 geopandas = ">=1.1.4,<2"
 leafmap = ">=0.63.0,<0.64"
 lxml = ">=6.1.2,<7"
 openpyxl = ">=3.1.5"
 pyarrow = ">=25.0.0,<26"
-rasterio = ">=1.5.1,<2"
+rasterio = ">=1.4,<2"
 rich = ">=13"
 tabulate = ">=0.10.0,<0.11"
 timezonefinder = ">=8.3.0,<9"

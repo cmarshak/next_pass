@@ -83,7 +83,7 @@ pixi run format  # ruff format
 | Environment | Python | Purpose |
 |---|---|---|
 | `default` | 3.13 | Everything: the package, JupyterLab, pytest, ruff. The only one you need locally. |
-| `py312` | 3.12 | CI matrix only — proves the package works on the oldest supported Python. |
+| `py311`, `py312` | 3.11, 3.12 | CI matrix only — prove the package works on the older supported Pythons. |
 | `lint` | none | Just ruff. Used by the CI lint job so it doesn't build the geospatial stack. |
 
 `pixi install` and `pixi run` only touch `default`. Any `-e` flag materializes
@@ -92,7 +92,11 @@ read-only-looking commands** like `pixi list -e py312`. Reproduce a matrix
 failure with `pixi run -e py312 pytest tests`, then reclaim the space with
 `pixi clean -e py312` (leaves `default` intact).
 
-The package supports Python 3.12+ — `earthaccess >=0.18` dropped 3.10/3.11. To
+The package supports Python 3.11+ (3.10 is at end-of-life). Each environment has
+its own solve group, so older Pythons may resolve older dependencies — e.g.
+`py311` gets `earthaccess 0.17` / `rasterio 1.4` while `default` gets the newest.
+When a pin blocks an older environment, loosen the *lower* bound and let the
+solver pick per-env versions rather than forcing everything to one version. To
 add support for a new Python release, add a `[tool.pixi.feature.pyXYZ]` block,
 point `default` at it, give the previously-newest version its own environment
 entry, add it to the CI matrix and the `Programming Language :: Python :: 3.X`
@@ -164,8 +168,8 @@ single commit and the daily parquet never accumulates in history.
 5. Keep commits focused and atomic
 6. Write clear commit messages
 
-CI runs on every PR: the test matrix (`py312` and `default` on Linux, `default`
-on macOS), a ruff check/format check, and a `pip-audit` dependency scan.
+CI runs on every PR: the test matrix (`py311`, `py312`, and `default` on Linux,
+`default` on macOS), a ruff check/format check, and a `pip-audit` dependency scan.
 
 ## Adding New Satellites
 
@@ -207,18 +211,10 @@ Releases are automated via GitHub Actions when a version tag is pushed.
    git push origin v0.2.0
    ```
 
-4. **Automated workflow** (`.github/workflows/release.yml`), triggered by the
-   `v*.*.*` tag:
-   - `build` — builds the wheel + sdist with `python -m build` and checks them
-     with `twine check`. This job uses plain `setup-python` (3.12) rather than
-     pixi: building a pure-Python wheel doesn't need the geospatial stack.
-   - `publish` — uploads to PyPI from the `pypi` GitHub environment using
-     trusted publishing (`id-token: write`, no token secret).
-   - `release` — creates the GitHub release with a changelog generated from the
-     commits since the previous tag.
-
-   Each job depends on the one before it, so a failed `twine check` never
-   publishes and a failed upload never creates a release.
+4. **Automated workflow**:
+   - Builds distribution packages (wheel + sdist)
+   - Publishes to PyPI (requires `PYPI_API_TOKEN` secret)
+   - Creates GitHub release with auto-generated changelog
 
 Check the built wheel locally before tagging if you changed packaging:
 
@@ -228,20 +224,6 @@ pixi run python -m pip wheel . --no-deps -w /tmp/dist
 
 Confirm it contains `next_pass/viewer_assets/index.html` and all three console
 scripts.
-
-### PyPI trusted publishing (one-time setup)
-
-Publishing uses [trusted publishing](https://docs.pypi.org/trusted-publishers/),
-so there is no API token to rotate or leak. On pypi.org, under the `next-pass`
-project's *Publishing* settings, add a GitHub publisher with:
-
-- Owner: `OPERA-Cal-Val`, Repository: `next_pass`
-- Workflow: `release.yml`
-- Environment: `pypi`
-
-Until that publisher exists, the publish step fails with a permissions error even
-though the build succeeded. Once it works, the old `PYPI_API_TOKEN` repository
-secret is unused and should be deleted.
 
 ### Version Numbering
 

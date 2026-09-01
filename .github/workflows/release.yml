@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.10'
 
       - name: Install build tools
         run: |
@@ -45,8 +45,6 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/next-pass
-    permissions:
-      id-token: write
 
     steps:
       - name: Download build artifacts
@@ -55,8 +53,10 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish to PyPI (trusted publishing)
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   release:
     name: Create GitHub Release

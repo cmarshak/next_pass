@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Pass — Upcoming Overpasses</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --plane: #f9f9f7;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e1e0d9;
+  --border: rgba(11, 11, 11, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --l8: #1baf7a;
+  --l9: #eda100;
+  --nisar: #e87ba4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --plane: #0d0d0d;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --hairline: #2c2c2a;
+    --border: rgba(255, 255, 255, 0.10);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --l8: #199e70;
+    --l9: #c98500;
+    --nisar: #d55181;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--plane);
+  color: var(--ink);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+header h1 { font-size: 16px; margin: 0; }
+header .sub { color: var(--ink-2); font-size: 12.5px; }
+main { flex: 1; display: flex; min-height: 0; }
+#sidebar {
+  width: 420px;
+  flex: none;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#drag {
+  flex: none;
+  width: 5px;
+  cursor: col-resize;
+  background: var(--hairline);
+}
+#drag:hover, #drag.dragging { background: var(--muted); }
+#map { flex: 1; min-width: 0; }
+section { padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+section h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+.sensor-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.chip { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border); flex: none; }
+.sensor-row .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dates { display: flex; gap: 8px; align-items: center; }
+.dates input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--plane);
+  color: var(--ink);
+  font: inherit;
+}
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+button {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  background: var(--plane);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button.active { border-color: var(--ink-2); background: var(--surface); font-weight: 600; }
+#status { color: var(--ink-2); font-size: 12.5px; }
+#results { flex: 1; overflow-y: auto; padding: 6px 8px; }
+.pass {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pass:hover { background: var(--plane); }
+.pass.sel { background: var(--plane); outline: 1px solid var(--muted); }
+.pass .chip { align-self: center; }
+.pass .when { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pass .what { color: var(--ink-2); font-size: 12.5px; }
+.pass .detail {
+  display: none;
+  flex-basis: 100%;
+  margin: 4px 0 0 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.pass.sel .detail { display: block; }
+.pass .detail dt {
+  display: inline;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10.5px;
+}
+.pass .detail dd { display: inline; margin: 0 0 0 4px; color: var(--ink-2); }
+.pass .detail div + div { margin-top: 1px; }
+.day-head {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 8px 2px;
+}
+.note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+#empty { padding: 24px 16px; color: var(--ink-2); }
+@media (prefers-color-scheme: dark) {
+  .leaflet-tile {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+  }
+  .leaflet-container { background: #0d0d0d; }
+}
+@media (max-width: 720px) {
+  main { flex-direction: column; }
+  #sidebar { width: 100% !important; max-height: 45%; }
+  #drag { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Next Pass — upcoming satellite overpasses</h1>
+  <span class="sub" id="meta">loading…</span>
+</header>
+<main>
+  <div id="sidebar">
+    <section>
+      <h2>Sensors</h2>
+      <div id="sensors"></div>
+    </section>
+    <section>
+      <h2>Date range (UTC)</h2>
+      <div class="dates">
+        <input type="date" id="date-start">
+        <span>→</span>
+        <input type="date" id="date-end">
+      </div>
+    </section>
+    <section>
+      <h2>Area of interest</h2>
+      <div class="btns">
+        <button id="draw-point">Drop point</button>
+        <button id="draw-box">Draw box</button>
+        <button id="clear-aoi">Clear</button>
+      </div>
+      <div class="note">Draw on the map, then matching passes appear below. Times marked (est.) are local-solar-time estimates: roughly ±40 min for NISAR frames, and up to ±1–2 h for Landsat path swaths. For exact times over your AOI, run the <code>next-pass</code> CLI.</div>
+    </section>
+    <section>
+      <h2>Matches <span id="status"></span></h2>
+    </section>
+    <div id="results"><div id="empty">Drop a point or draw a box on the map to see which sensors will pass over it.</div></div>
+  </div>
+  <div id="drag" title="Drag to resize"></div>
+  <div id="map"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/7.2.0/turf.min.js"></script>
+<script type="module">
+import { parquetReadObjects } from "https://cdn.jsdelivr.net/npm/hyparquet@1.16.0/+esm";
+import { compressors } from "https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm";
+
+const SENSORS = [
+  { key: "sentinel-1", label: "Sentinel-1", cssVar: "--s1" },
+  { key: "sentinel-2", label: "Sentinel-2", cssVar: "--s2" },
+  { key: "landsat-8", label: "Landsat 8", cssVar: "--l8" },
+  { key: "landsat-9", label: "Landsat 9", cssVar: "--l9" },
+  { key: "nisar", label: "NISAR", cssVar: "--nisar" },
+];
+const MAX_RESULTS = 500;
+
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const dark = window.matchMedia("(prefers-color-scheme: dark)");
+const sensorColor = Object.fromEntries(SENSORS.map((s) => [s.key, () => css(s.cssVar)]));
+
+const map = L.map("map", { worldCopyJump: true }).setView([20, 0], 2);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 12,
+}).addTo(map);
+dark.addEventListener("change", () => render());
+
+function decodeWKB(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let pos = 0;
+  function geom() {
+    const little = view.getUint8(pos) === 1; pos += 1;
+    let type = view.getUint32(pos, little); pos += 4;
+    type = type & 0xff;
+    const f64 = () => { const v = view.getFloat64(pos, little); pos += 8; return v; };
+    const u32 = () => { const v = view.getUint32(pos, little); pos += 4; return v; };
+    if (type === 1) return { type: "Point", coordinates: [f64(), f64()] };
+    if (type === 3) {
+      const rings = Array.from({ length: u32() }, () =>
+        Array.from({ length: u32() }, () => [f64(), f64()]));
+      return { type: "Polygon", coordinates: rings };
+    }
+    if (type === 6) {
+      const polys = Array.from({ length: u32() }, () => geom().coordinates);
+      return { type: "MultiPolygon", coordinates: polys };
+    }
+    throw new Error(`Unsupported WKB geometry type ${type}`);
+  }
+  return geom();
+}
+
+const state = {
+  rows: [],
+  enabled: new Set(SENSORS.map((s) => s.key)),
+  aoi: null,
+  aoiLayer: null,
+  start: null,
+  end: null,
+  selected: null,
+};
+const passLayer = L.featureGroup().addTo(map);
+
+async function load() {
+  const [buf, meta] = await Promise.all([
+    fetch("./data/upcoming_passes.parquet").then((r) => {
+      if (!r.ok) throw new Error(`data fetch failed (${r.status})`);
+      return r.arrayBuffer();
+    }),
+    fetch("./data/upcoming_passes.meta.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+  ]);
+  const raw = await parquetReadObjects({ file: buf, compressors, utf8: false });
+  state.rows = raw
+    .filter((r) => r.geometry)
+    .map((r) => ({
+      sensor: r.sensor,
+      platform: r.platform,
+      mode: r.mode,
+      direction: r.orbit_direction,
+      track: r.track == null ? null : Number(r.track),
+      begin: r.begin_time instanceof Date ? r.begin_time : new Date(r.begin_time),
+      estimated: Boolean(r.time_is_estimated),
+      geojson: decodeWKB(r.geometry),
+    }))
+    .map((r) => ({ ...r, bbox: turf.bbox(r.geojson) }));
+
+  const times = state.rows.map((r) => r.begin.getTime());
+  const lo = new Date(Math.min(...times));
+  const hi = new Date(Math.max(...times));
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const startInput = document.getElementById("date-start");
+  const endInput = document.getElementById("date-end");
+  startInput.min = endInput.min = iso(lo);
+  startInput.max = endInput.max = iso(hi);
+  startInput.value = iso(lo);
+  endInput.value = iso(hi);
+  state.start = startInput.value;
+  state.end = endInput.value;
+
+  const when = meta.generated_at ? new Date(meta.generated_at).toUTCString().replace(":00 GMT", " UTC") : null;
+  document.getElementById("meta").textContent =
+    `${state.rows.length.toLocaleString()} planned passes` + (when ? ` · updated ${when}` : "");
+  render();
+}
+
+function buildSensorRows() {
+  const box = document.getElementById("sensors");
+  box.replaceChildren(...SENSORS.map((s) => {
+    const label = document.createElement("label");
+    label.className = "sensor-row";
+    const cb = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
+    cb.addEventListener("change", () => {
+      cb.checked ? state.enabled.add(s.key) : state.enabled.delete(s.key);
+      render();
+    });
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.style.background = sensorColor[s.key]();
+    const name = document.createElement("span");
+    name.textContent = s.label;
+    const n = Object.assign(document.createElement("span"), { className: "n" });
+    n.dataset.sensor = s.key;
+    label.append(cb, chip, name, n);
+    return label;
+  }));
+}
+
+function matches() {
+  if (!state.aoi) return [];
+  const t0 = new Date(`${state.start}T00:00:00Z`).getTime();
+  const t1 = new Date(`${state.end}T23:59:59Z`).getTime();
+  const [ax0, ay0, ax1, ay1] = turf.bbox(state.aoi);
+  return state.rows.filter((r) => {
+    const t = r.begin.getTime();
+    if (t < t0 || t > t1) return false;
+    if (!state.enabled.has(r.sensor)) return false;
+    const [x0, y0, x1, y1] = r.bbox;
+    if (x1 < ax0 || x0 > ax1 || y1 < ay0 || y0 > ay1) return false;
+    try {
+      return turf.booleanIntersects(state.aoi, r.geojson);
+    } catch {
+      return false;
+    }
+  }).sort((a, b) => a.begin - b.begin);
+}
+
+function fmtTime(r) {
+  const hh = String(r.begin.getUTCHours()).padStart(2, "0");
+  const mm = String(r.begin.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm} UTC${r.estimated ? " (est.)" : ""}`;
+}
+
+const sensorLabel = (r) => SENSORS.find((s) => s.key === r.sensor)?.label || r.sensor;
+
+function fmtWhat(r) {
+  const bits = [sensorLabel(r)];
+  if (r.direction) bits.push(r.direction === "ascending" ? "asc" : "desc");
+  if (r.track != null && !Number.isNaN(r.track)) bits.push(`track ${r.track}`);
+  return bits.join(" · ");
+}
+
+function detailFields(r) {
+  const stamp = `${r.begin.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  const redundantPlatform = r.platform.toUpperCase() === sensorLabel(r).toUpperCase();
+  return [
+    ["platform", redundantPlatform ? null : r.platform],
+    ["mode", r.mode],
+    ["acquired", r.estimated ? `~${stamp}, estimated from orbit geometry` : stamp],
+  ].filter(([, value]) => value);
+}
+
+function buildDetail(r) {
+  const dl = document.createElement("dl");
+  dl.className = "detail";
+  detailFields(r).forEach(([key, value]) => {
+    const line = document.createElement("div");
+    line.append(
+      Object.assign(document.createElement("dt"), { textContent: key }),
+      Object.assign(document.createElement("dd"), { textContent: value }),
+    );
+    dl.append(line);
+  });
+  return dl;
+}
+
+function render() {
+  const found = matches();
+  passLayer.clearLayers();
+  const results = document.getElementById("results");
+  const status = document.getElementById("status");
+
+  const counts = {};
+  found.forEach((r) => { counts[r.sensor] = (counts[r.sensor] || 0) + 1; });
+  document.querySelectorAll("#sensors .n").forEach((el) => {
+    el.textContent = state.aoi ? String(counts[el.dataset.sensor] || 0) : "";
+  });
+
+  if (!state.aoi) {
+    status.textContent = "";
+    results.replaceChildren(Object.assign(document.createElement("div"), {
+      id: "empty",
+      textContent: "Drop a point or draw a box on the map to see which sensors will pass over it.",
+    }));
+    return;
+  }
+
+  status.textContent = found.length > MAX_RESULTS
+    ? `${found.length} (showing first ${MAX_RESULTS})`
+    : String(found.length);
+
+  const shown = found.slice(0, MAX_RESULTS);
+  shown.forEach((r) => {
+    const wholeOrbitSwath = r.sensor.startsWith("landsat");
+    r.baseStyle = {
+      color: sensorColor[r.sensor] ? sensorColor[r.sensor]() : css("--muted"),
+      weight: wholeOrbitSwath ? 1 : 1.5,
+      opacity: wholeOrbitSwath ? 0.5 : 0.8,
+      fillOpacity: wholeOrbitSwath ? 0 : 0.06,
+    };
+    r.layer = L.geoJSON(r.geojson, { style: r.baseStyle }).addTo(passLayer);
+    r.layer.bindTooltip(
+      `${fmtWhat(r)}<br>${r.begin.toISOString().slice(0, 10)} ${fmtTime(r)}${r.mode ? `<br>${r.mode}` : ""}`,
+      { sticky: true },
+    );
+  });
+
+  const items = [];
+  let lastDay = null;
+  shown.forEach((r) => {
+    const day = r.begin.toISOString().slice(0, 10);
+    if (day !== lastDay) {
+      lastDay = day;
+      items.push(Object.assign(document.createElement("div"), { className: "day-head", textContent: day }));
+    }
+    const row = document.createElement("div");
+    row.className = "pass";
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.style.background = sensorColor[r.sensor] ? sensorColor[r.sensor]() : css("--muted");
+    const when = Object.assign(document.createElement("span"), { className: "when", textContent: fmtTime(r) });
+    const what = Object.assign(document.createElement("span"), {
+      className: "what",
+      textContent: fmtWhat(r),
+    });
+    row.append(chip, when, what, buildDetail(r));
+    row.addEventListener("click", () => {
+      const wasSelected = row.classList.contains("sel");
+      document.querySelectorAll(".pass.sel").forEach((el) => el.classList.remove("sel"));
+      if (state.selected) state.selected.layer.setStyle(state.selected.baseStyle);
+      if (wasSelected) {
+        state.selected = null;
+        return;
+      }
+      row.classList.add("sel");
+      state.selected = r;
+      r.layer.setStyle({ weight: 3, opacity: 1, fillOpacity: 0.18 });
+      map.fitBounds(r.layer.getBounds().pad(0.4));
+    });
+    items.push(row);
+  });
+  results.replaceChildren(...items);
+}
+
+function setAOI(layer, geojson) {
+  if (state.aoiLayer) state.aoiLayer.remove();
+  state.aoiLayer = layer.addTo(map);
+  state.aoi = geojson;
+  render();
+}
+
+const aoiStyle = () => ({ color: css("--ink"), weight: 2, dashArray: "5 4", fillOpacity: 0.02 });
+let activeDraw = null;
+function startDraw(kind, btn) {
+  if (activeDraw) activeDraw.disable();
+  document.querySelectorAll(".btns button").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  activeDraw = kind === "point"
+    ? new L.Draw.Marker(map)
+    : new L.Draw.Rectangle(map, { shapeOptions: aoiStyle() });
+  activeDraw.enable();
+}
+map.on(L.Draw.Event.CREATED, (e) => {
+  document.querySelectorAll(".btns button").forEach((b) => b.classList.remove("active"));
+  if (e.layerType === "marker") {
+    const { lat, lng } = e.layer.getLatLng();
+    setAOI(L.marker([lat, lng]), turf.point([lng, lat]).geometry);
+  } else {
+    setAOI(L.rectangle(e.layer.getBounds(), aoiStyle()),
+      turf.bboxPolygon([
+        e.layer.getBounds().getWest(), e.layer.getBounds().getSouth(),
+        e.layer.getBounds().getEast(), e.layer.getBounds().getNorth(),
+      ]).geometry);
+  }
+});
+
+document.getElementById("draw-point").addEventListener("click", (e) => startDraw("point", e.currentTarget));
+document.getElementById("draw-box").addEventListener("click", (e) => startDraw("box", e.currentTarget));
+document.getElementById("clear-aoi").addEventListener("click", () => {
+  if (activeDraw) activeDraw.disable();
+  if (state.aoiLayer) state.aoiLayer.remove();
+  state.aoi = state.aoiLayer = null;
+  document.querySelectorAll(".btns button").forEach((b) => b.classList.remove("active"));
+  render();
+});
+["date-start", "date-end"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", (e) => {
+    state[id === "date-start" ? "start" : "end"] = e.target.value;
+    render();
+  });
+});
+
+const sidebar = document.getElementById("sidebar");
+const dragHandle = document.getElementById("drag");
+const clampWidth = (px) => Math.max(300, Math.min(px, window.innerWidth - 320));
+try {
+  const saved = localStorage.getItem("nextpass.sidebarWidth");
+  if (saved) sidebar.style.width = `${clampWidth(Number(saved))}px`;
+} catch {}
+dragHandle.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  dragHandle.setPointerCapture(e.pointerId);
+  dragHandle.classList.add("dragging");
+  const onMove = (ev) => {
+    sidebar.style.width = `${clampWidth(ev.clientX - sidebar.getBoundingClientRect().left)}px`;
+  };
+  const onUp = () => {
+    dragHandle.classList.remove("dragging");
+    dragHandle.removeEventListener("pointermove", onMove);
+    map.invalidateSize();
+    try {
+      localStorage.setItem("nextpass.sidebarWidth", String(parseInt(sidebar.style.width, 10)));
+    } catch {}
+  };
+  dragHandle.addEventListener("pointermove", onMove);
+  dragHandle.addEventListener("pointerup", onUp, { once: true });
+});
+
+buildSensorRows();
+load().catch((err) => {
+  document.getElementById("meta").textContent = `Failed to load pass data: ${err.message}`;
+});
+</script>
+</body>
+</html>

@@ -321,5 +321,9 @@ def main(cli_args: list[str] | None = None) -> Path:
     return output
 
 
+def cli() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

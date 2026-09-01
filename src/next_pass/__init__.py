@@ -483,5 +483,9 @@ def main(cli_args: Any = None):
     return timestamp_dir
 
 
+def cli() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

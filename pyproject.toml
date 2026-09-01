@@ -72,8 +72,8 @@ Source = "https://github.com/OPERA-Cal-Val/next_pass"
 Issues = "https://github.com/OPERA-Cal-Val/next_pass/issues"
 
 [project.scripts]
-next-pass = "next_pass:main"
-next-pass-schedule = "next_pass.schedule:main"
+next-pass = "next_pass:cli"
+next-pass-schedule = "next_pass.schedule:cli"
 next-pass-viewer = "next_pass.viewer:main"
 
 [tool.setuptools.packages.find]

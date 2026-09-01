@@ -192,3 +192,6 @@ site/
 nextpass_outputs_*/
 upcoming_passes.parquet
 upcoming_passes.meta.json
+
+# Claude
+claude/

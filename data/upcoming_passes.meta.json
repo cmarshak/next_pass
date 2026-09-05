@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-09-05T08:27:57+00:00",
+  "days": 7,
+  "n_passes": 14224,
+  "sensors": {
+    "nisar": 11759,
+    "sentinel-1": 1069,
+    "sentinel-2": 988,
+    "landsat-8": 204,
+    "landsat-9": 204
+  }
+}
